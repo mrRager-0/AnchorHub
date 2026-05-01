@@ -1,0 +1,14 @@
+name: "SDF Test Anchor"
+homeDomain: "testanchor.stellar.org"
+network: testnet
+supportedSeps: [6, 24, 31]
+contact: "dev@stellar.org"
+assets:
+  - code: USDC
+    issuer: "GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5"
+    depositMin: 1
+    depositMax: 10000
+    withdrawMin: 1
+    withdrawMax: 10000
+    feeFixed: 0.5
+    feePercent: 0.1

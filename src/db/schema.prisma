@@ -1,0 +1,140 @@
+// AnchorHub Prisma Schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Anchor Registry ──────────────────────────────────────────────────────────
+
+model Anchor {
+  id           String   @id @default(cuid())
+  name         String
+  homeDomain   String   @unique
+  stellarToml  Json?    // cached stellar.toml contents
+  network      Network
+  supportedSeps Int[]   // e.g. [6, 24, 31]
+  assets       AnchorAsset[]
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  transactions Transaction[]
+  healthChecks HealthCheck[]
+}
+
+model AnchorAsset {
+  id        String  @id @default(cuid())
+  anchorId  String
+  anchor    Anchor  @relation(fields: [anchorId], references: [id])
+  assetCode String  // e.g. "USDC"
+  issuer    String  // Stellar account ID
+  depositMin  Decimal?
+  depositMax  Decimal?
+  withdrawMin Decimal?
+  withdrawMax Decimal?
+  feeFixed    Decimal?
+  feePercent  Decimal?
+
+  @@unique([anchorId, assetCode])
+}
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+
+model Transaction {
+  id              String            @id @default(cuid())
+  externalId      String?           // anchor's own tx ID
+  anchorId        String
+  anchor          Anchor            @relation(fields: [anchorId], references: [id])
+  apiKeyId        String
+  apiKey          ApiKey            @relation(fields: [apiKeyId], references: [id])
+  type            TransactionType
+  sep             Int               // 6, 24, or 31
+  status          TransactionStatus @default(PENDING)
+  assetCode       String
+  amount          Decimal
+  feeAmount       Decimal?
+  stellarTxHash   String?
+  webhookUrl      String?
+  metadata        Json?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  webhookEvents   WebhookEvent[]
+}
+
+// ─── API Keys ─────────────────────────────────────────────────────────────────
+
+model ApiKey {
+  id          String   @id @default(cuid())
+  keyHash     String   @unique  // argon2 hash
+  keyPrefix   String            // first 8 chars for lookup
+  label       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  lastUsedAt  DateTime?
+
+  transactions Transaction[]
+}
+
+// ─── Webhooks ─────────────────────────────────────────────────────────────────
+
+model WebhookEvent {
+  id            String        @id @default(cuid())
+  transactionId String
+  transaction   Transaction   @relation(fields: [transactionId], references: [id])
+  event         String        // e.g. "transaction.status_changed"
+  payload       Json
+  status        WebhookStatus @default(PENDING)
+  attempts      Int           @default(0)
+  nextRetryAt   DateTime?
+  createdAt     DateTime      @default(now())
+}
+
+// ─── Health Checks ────────────────────────────────────────────────────────────
+
+model HealthCheck {
+  id          String   @id @default(cuid())
+  anchorId    String
+  anchor      Anchor   @relation(fields: [anchorId], references: [id])
+  isHealthy   Boolean
+  latencyMs   Int?
+  checkedAt   DateTime @default(now())
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Network {
+  MAINNET
+  TESTNET
+}
+
+enum TransactionType {
+  DEPOSIT
+  WITHDRAWAL
+  TRANSFER  // SEP-31
+}
+
+enum TransactionStatus {
+  PENDING
+  INCOMPLETE
+  PENDING_EXTERNAL
+  PENDING_ANCHOR
+  PENDING_STELLAR
+  PENDING_TRUST
+  PENDING_USER
+  COMPLETED
+  REFUNDED
+  EXPIRED
+  ERROR
+}
+
+enum WebhookStatus {
+  PENDING
+  DELIVERED
+  FAILED
+}

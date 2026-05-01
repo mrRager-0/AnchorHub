@@ -1,0 +1,32 @@
+replicaCount: 2
+
+image:
+  repository: anchorhub
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+env:
+  STELLAR_NETWORK: mainnet
+  PORT: "3000"
+  LOG_LEVEL: info
+
+# Secrets — set via --set or external secrets operator
+secrets:
+  DATABASE_URL: ""
+  REDIS_URL: ""
+  API_KEY_SALT: ""
+  JWT_SECRET: ""
+  WEBHOOK_SIGNING_SECRET: ""
+  HORIZON_URL: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
